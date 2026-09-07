@@ -8,6 +8,11 @@ const AdminSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, minlength: 6, select: false },
     zoneName: { type: String, default: "" },
+    // "superadmin" can create/manage other zonal head accounts but does not
+    // own clubs itself. "zonalhead" is the normal admin role (e.g. Dibakar
+    // Paudel) that manages clubs, contacts, responses, and questions.
+    role: { type: String, enum: ["superadmin", "zonalhead"], default: "zonalhead" },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", default: null },
   },
   { timestamps: true }
 );

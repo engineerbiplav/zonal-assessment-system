@@ -1,9 +1,12 @@
-// Guiding Questions for Club Officers, sourced from:
+// Default/starter Guiding Questions, sourced from:
 // "Zone Chairperson Training - Pre-Assignment: Completing a Zone Assessment"
 // (Step 2: Interview Contacts Using Guiding Questions)
 //
-// Each question has a stable id so answers can be reliably matched to a
-// question even if wording is tweaked later.
+// NOTE: these are only used as the starting template copied into each
+// admin's own editable `Question` documents (see utils/seedDefaultQuestions.js)
+// when their account is created. Live assessments are served from the
+// database (server/models/Question.js) so zonal heads can edit their own
+// wording/categories/questions per assessment type without touching this file.
 
 const GUIDING_QUESTIONS = [
   {

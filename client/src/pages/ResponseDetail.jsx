@@ -7,20 +7,22 @@ export default function ResponseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [response, setResponse] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     api.get(`/responses/${id}`).then(({ data }) => setResponse(data));
   }, [id]);
 
-  const exportDocx = async () => {
-    const res = await api.get(`/responses/${id}/export`, { responseType: "blob" });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${response.respondentName}-${response.position}-response.docx`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  const deleteResponse = async () => {
+    if (!window.confirm("Delete this response? The president will need to submit again.")) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/responses/${id}`);
+      navigate(-1);
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete response");
+      setDeleting(false);
+    }
   };
 
   if (!response) {
@@ -49,7 +51,9 @@ export default function ResponseDetail() {
               {response.club.name} (#{response.club.clubNumber}) · Submitted {new Date(response.submittedAt).toLocaleString()}
             </p>
           </div>
-          <button className="btn gold" onClick={exportDocx}>Export as .docx</button>
+          <button className="btn danger" onClick={deleteResponse} disabled={deleting}>
+            {deleting ? "Deleting..." : "Delete Response"}
+          </button>
         </div>
 
         {response.answers.map((a) => {

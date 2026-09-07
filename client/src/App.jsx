@@ -10,14 +10,27 @@ import Analytics from "./pages/Analytics.jsx";
 import ResponseDetail from "./pages/ResponseDetail.jsx";
 import PublicForm from "./pages/PublicForm.jsx";
 import AssessmentAccess from "./pages/AssessmentAccess.jsx";
+import Questions from "./pages/Questions.jsx";
+import SuperAdmin from "./pages/SuperAdmin.jsx";
 
-function Protected({ children }) {
+const homeFor = (admin) => (admin?.role === "superadmin" ? "/super-admin" : "/dashboard");
+
+// `roles`, when given, restricts the route to admins with one of those
+// roles — anyone else logged in gets bounced to their own home page instead
+// of just being kicked to /login.
+function Protected({ children, roles }) {
   const { admin } = useAuth();
   if (!admin) return <Navigate to="/login" replace />;
+  const role = admin.role || "zonalhead";
+  if (roles && !roles.includes(role)) {
+    return <Navigate to={homeFor(admin)} replace />;
+  }
   return children;
 }
 
 export default function App() {
+  const { admin } = useAuth();
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -27,7 +40,7 @@ export default function App() {
       <Route
         path="/dashboard"
         element={
-          <Protected>
+          <Protected roles={["zonalhead"]}>
             <Dashboard />
           </Protected>
         }
@@ -35,7 +48,7 @@ export default function App() {
       <Route
         path="/clubs/:id"
         element={
-          <Protected>
+          <Protected roles={["zonalhead"]}>
             <ClubDetail />
           </Protected>
         }
@@ -43,15 +56,23 @@ export default function App() {
       <Route
         path="/zone-leadership"
         element={
-          <Protected>
+          <Protected roles={["zonalhead"]}>
             <ZoneLeadership />
+          </Protected>
+        }
+      />
+      <Route
+        path="/questions"
+        element={
+          <Protected roles={["zonalhead"]}>
+            <Questions />
           </Protected>
         }
       />
       <Route
         path="/analytics"
         element={
-          <Protected>
+          <Protected roles={["zonalhead"]}>
             <Analytics />
           </Protected>
         }
@@ -59,14 +80,23 @@ export default function App() {
       <Route
         path="/responses/:id"
         element={
-          <Protected>
+          <Protected roles={["zonalhead"]}>
             <ResponseDetail />
           </Protected>
         }
       />
 
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route
+        path="/super-admin"
+        element={
+          <Protected roles={["superadmin"]}>
+            <SuperAdmin />
+          </Protected>
+        }
+      />
+
+      <Route path="/" element={<Navigate to={admin ? homeFor(admin) : "/login"} replace />} />
+      <Route path="*" element={<Navigate to={admin ? homeFor(admin) : "/login"} replace />} />
     </Routes>
   );
 }

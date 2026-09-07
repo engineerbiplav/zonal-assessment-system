@@ -1,14 +1,17 @@
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middleware/auth");
+const { protect, requireZonalHead } = require("../middleware/auth");
 const {
-  getResponses, getResponse, exportResponse,
+  getResponses, getResponse, deleteResponse, exportAllResponses,
 } = require("../controllers/responseController");
 
-router.use(protect);
+router.use(protect, requireZonalHead);
 
+// IMPORTANT: /export-all must be registered before the /:id route so it
+// isn't swallowed as an :id param.
+router.get("/export-all", exportAllResponses);
 router.get("/", getResponses);
 router.get("/:id", getResponse);
-router.get("/:id/export", exportResponse);
+router.delete("/:id", deleteResponse);
 
 module.exports = router;

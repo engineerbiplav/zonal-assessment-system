@@ -1,9 +1,6 @@
 const ZoneOfficial = require("../models/ZoneOfficial");
 const ZoneResponse = require("../models/ZoneResponse");
 const { ZONE_ROLES, ZONE_ROLE_LABELS } = require("../models/ZoneOfficial");
-const {
-  Document, Packer, Paragraph, HeadingLevel, TextRun,
-} = require("docx");
 
 // GET /api/zone-officials
 // Always returns one entry per role for this admin, even if not yet set up
@@ -84,41 +81,24 @@ const getZoneResponse = async (req, res) => {
   res.json(response);
 };
 
-// GET /api/zone-officials/:role/export
-const exportZoneResponse = async (req, res) => {
+// DELETE /api/zone-officials/:role/response
+// Lets the zonal head delete just the submitted response (keeping the
+// official's roster record in place) so they can be re-invited to respond.
+const deleteZoneResponse = async (req, res) => {
   const { role } = req.params;
   const official = await ZoneOfficial.findOne({ admin: req.admin._id, role });
   if (!official) return res.status(404).json({ message: "No official set up for this role yet" });
 
-  const response = await ZoneResponse.findOne({ zoneOfficial: official._id });
+  const response = await ZoneResponse.findOneAndDelete({ zoneOfficial: official._id });
   if (!response) return res.status(404).json({ message: "No response submitted yet" });
 
-  const children = [
-    new Paragraph({ text: "Zone Assessment Response", heading: HeadingLevel.TITLE }),
-    new Paragraph({ text: `Role: ${ZONE_ROLE_LABELS[role]}`, spacing: { after: 100 } }),
-    new Paragraph({ text: `Respondent: ${response.respondentName}`, spacing: { after: 100 } }),
-    new Paragraph({ text: `Submitted: ${new Date(response.submittedAt).toLocaleString()}`, spacing: { after: 300 } }),
-  ];
+  official.hasResponded = false;
+  official.respondedAt = null;
+  await official.save();
 
-  let currentCategory = null;
-  response.answers.forEach((a) => {
-    if (a.category !== currentCategory) {
-      currentCategory = a.category;
-      children.push(new Paragraph({ text: currentCategory, heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 100 } }));
-    }
-    children.push(new Paragraph({ children: [new TextRun({ text: a.question, bold: true })], spacing: { before: 150 } }));
-    children.push(new Paragraph({ text: a.answer || "(no answer provided)", spacing: { after: 50 } }));
-  });
-
-  const doc = new Document({ sections: [{ children }] });
-  const buffer = await Packer.toBuffer(doc);
-
-  const filename = `${ZONE_ROLE_LABELS[role]}-response.docx`.replace(/[^a-z0-9.-]/gi, "_");
-  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-  res.send(buffer);
+  res.json({ message: "Response deleted" });
 };
 
 module.exports = {
-  getZoneOfficials, upsertZoneOfficial, deleteZoneOfficial, getZoneResponse, exportZoneResponse,
+  getZoneOfficials, upsertZoneOfficial, deleteZoneOfficial, getZoneResponse, deleteZoneResponse,
 };

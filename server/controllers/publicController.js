@@ -4,8 +4,15 @@ const Admin = require("../models/Admin");
 const Response = require("../models/Response");
 const ZoneOfficial = require("../models/ZoneOfficial");
 const ZoneResponse = require("../models/ZoneResponse");
-const { GUIDING_QUESTIONS, FLAT_QUESTIONS, ZONE_ROLES: ZONE_ROLE_QUESTIONS } = require("../data/questions");
 const { ZONE_ROLES, ZONE_ROLE_LABELS } = require("../models/ZoneOfficial");
+const getQuestionSections = require("../utils/getQuestionSections");
+
+// Maps a zone-level official role to its assessment "type" used to look up
+// that admin's editable Question documents.
+const ZONE_ROLE_TYPE = {
+  ImmediatePastZoneChairperson: "zoneChair",
+  FirstViceDistrictGovernor: "dge",
+};
 
 // Only the club president role has an online guiding-question assessment.
 // Secretary / Treasurer / Membership Chairperson remain roster-only contacts.
@@ -128,6 +135,7 @@ const getForm = async (req, res) => {
     const club = await Club.findById(contact.club);
     const admin = await Admin.findById(contact.admin).select("name title");
     const existingResponse = await Response.findOne({ contactPerson: contact._id });
+    const questionSections = await getQuestionSections(contact.admin, "club");
 
     const previousAnswers = {};
     if (existingResponse) {
@@ -138,7 +146,7 @@ const getForm = async (req, res) => {
       club: { name: club.name, logoUrl: club.logoUrl, clubNumber: club.clubNumber },
       admin: { name: admin?.name || "", title: admin?.title || "Zonal Head" },
       contact: { name: contact.name, position: contact.position },
-      questionSections: GUIDING_QUESTIONS,
+      questionSections,
       hasResponded: contact.hasResponded,
       respondedAt: contact.respondedAt,
       previousAnswers,
@@ -149,7 +157,7 @@ const getForm = async (req, res) => {
   if (official) {
     const admin = await Admin.findById(official.admin).select("name title");
     const existingResponse = await ZoneResponse.findOne({ zoneOfficial: official._id });
-    const roleInfo = ZONE_ROLE_QUESTIONS[official.role];
+    const questionSections = await getQuestionSections(official.admin, ZONE_ROLE_TYPE[official.role]);
 
     const previousAnswers = {};
     if (existingResponse) {
@@ -160,7 +168,7 @@ const getForm = async (req, res) => {
       club: null,
       admin: { name: admin?.name || "", title: admin?.title || "Zonal Head" },
       contact: { name: official.name, position: ZONE_ROLE_LABELS[official.role] },
-      questionSections: roleInfo.sections,
+      questionSections,
       hasResponded: official.hasResponded,
       respondedAt: official.respondedAt,
       previousAnswers,
@@ -189,13 +197,15 @@ const submitForm = async (req, res) => {
       return res.status(403).json({ message: "This position does not have an online assessment" });
     }
 
-    const answerDocs = FLAT_QUESTIONS.map((q) => ({
+    const sections = await getQuestionSections(contact.admin, "club");
+    const flatQuestions = sections.flatMap((s) => s.questions.map((q) => ({ ...q, category: s.category })));
+    const answerDocs = flatQuestions.map((q) => ({
       questionId: q.id,
       category: q.category,
       question: q.text,
       answer: (answers[q.id] || "").toString().trim(),
     }));
-    const isComplete = answerDocs.every((a) => a.answer.length > 0);
+    const isComplete = answerDocs.length > 0 && answerDocs.every((a) => a.answer.length > 0);
 
     const now = new Date();
     const response = await Response.findOneAndUpdate(
@@ -227,14 +237,15 @@ const submitForm = async (req, res) => {
 
   const official = await ZoneOfficial.findOne({ publicToken: token });
   if (official) {
-    const roleInfo = ZONE_ROLE_QUESTIONS[official.role];
-    const answerDocs = roleInfo.flat.map((q) => ({
+    const sections = await getQuestionSections(official.admin, ZONE_ROLE_TYPE[official.role]);
+    const flatQuestions = sections.flatMap((s) => s.questions.map((q) => ({ ...q, category: s.category })));
+    const answerDocs = flatQuestions.map((q) => ({
       questionId: q.id,
       category: q.category,
       question: q.text,
       answer: (answers[q.id] || "").toString().trim(),
     }));
-    const isComplete = answerDocs.every((a) => a.answer.length > 0);
+    const isComplete = answerDocs.length > 0 && answerDocs.every((a) => a.answer.length > 0);
 
     const now = new Date();
     const response = await ZoneResponse.findOneAndUpdate(

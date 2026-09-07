@@ -7,6 +7,7 @@ export default function Dashboard() {
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
 
   const load = async () => {
@@ -20,6 +21,24 @@ export default function Dashboard() {
     load();
   }, []);
 
+  const exportAll = async () => {
+    setExporting(true);
+    try {
+      const res = await api.get("/responses/export-all", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "zone-assessment-report.docx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to export report");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
       <Topbar />
@@ -29,9 +48,14 @@ export default function Dashboard() {
             <h1>Your Clubs</h1>
             <p className="muted">Clubs under your zone. Click a club to manage its officers and responses.</p>
           </div>
-          <button className="btn gold" onClick={() => setShowModal(true)}>
-            + Add Club
-          </button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="btn secondary" onClick={exportAll} disabled={exporting}>
+              {exporting ? "Exporting..." : "Export All Responses (.docx)"}
+            </button>
+            <button className="btn gold" onClick={() => setShowModal(true)}>
+              + Add Club
+            </button>
+          </div>
         </div>
 
         <div className="card" style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>

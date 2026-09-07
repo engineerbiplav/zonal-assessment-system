@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middleware/auth");
+const { protect, requireZonalHead } = require("../middleware/auth");
 const { clubLogoUpload, contactPhotoUpload } = require("../middleware/upload");
 
 const {
@@ -9,9 +9,8 @@ const {
 const {
   getContacts, createContact,
 } = require("../controllers/contactController");
-const { exportClubResponses } = require("../controllers/responseController");
 
-router.use(protect);
+router.use(protect, requireZonalHead);
 
 router.get("/", getClubs);
 router.post("/", clubLogoUpload.single("logo"), createClub);
@@ -21,7 +20,5 @@ router.delete("/:id", deleteClub);
 
 router.get("/:clubId/contacts", getContacts);
 router.post("/:clubId/contacts", contactPhotoUpload.single("photo"), createContact);
-
-router.get("/:clubId/export", exportClubResponses);
 
 module.exports = router;

@@ -79,25 +79,27 @@ export default function Analytics() {
                 {c.completedResponses} / {c.requiredResponses} required responses submitted
               </div>
               <div className="progress-bar"><div style={{ width: `${c.completionRate}%` }} /></div>
-              <table style={{ marginTop: 12 }}>
-                <tbody>
-                  {c.positions.map((p) => (
-                    <tr key={p.position}>
-                      <td>{p.position}</td>
-                      <td>{p.name}</td>
-                      <td>
-                        {!p.requiresResponse ? (
-                          <span className="badge na">N/A</span>
-                        ) : p.hasResponded ? (
-                          <span className="badge success">Responded {new Date(p.respondedAt).toLocaleDateString()}</span>
-                        ) : (
-                          <span className="badge pending">Pending</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="table-responsive">
+                <table style={{ marginTop: 12 }}>
+                  <tbody>
+                    {c.positions.map((p) => (
+                      <tr key={p.position}>
+                        <td>{p.position}</td>
+                        <td>{p.name}</td>
+                        <td>
+                          {!p.requiresResponse ? (
+                            <span className="badge na">N/A</span>
+                          ) : p.hasResponded ? (
+                            <span className="badge success">Responded {new Date(p.respondedAt).toLocaleDateString()}</span>
+                          ) : (
+                            <span className="badge pending">Pending</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ))}
         </div>
@@ -107,21 +109,23 @@ export default function Analytics() {
           {recentResponses.length === 0 ? (
             <p className="muted">No submissions yet.</p>
           ) : (
-            <table>
-              <thead>
-                <tr><th>Respondent</th><th>Position</th><th>Submitted</th><th></th></tr>
-              </thead>
-              <tbody>
-                {recentResponses.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.respondentName}</td>
-                    <td>{r.position}</td>
-                    <td>{new Date(r.submittedAt).toLocaleString()}</td>
-                    <td><Link to={`/responses/${r.id}`}>View →</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-responsive">
+              <table>
+                <thead>
+                  <tr><th>Respondent</th><th>Position</th><th>Submitted</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {recentResponses.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.respondentName}</td>
+                      <td>{r.position}</td>
+                      <td>{new Date(r.submittedAt).toLocaleString()}</td>
+                      <td><Link to={`/responses/${r.id}`}>View →</Link></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

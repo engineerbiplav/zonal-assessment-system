@@ -18,4 +18,22 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+// Only allows admins with role "superadmin" through (must run after `protect`).
+const requireSuperAdmin = (req, res, next) => {
+  if (!req.admin || req.admin.role !== "superadmin") {
+    return res.status(403).json({ message: "Only a super admin can do that" });
+  }
+  next();
+};
+
+// Only allows admins with role "zonalhead" through (must run after `protect`).
+// Super admins don't own clubs/contacts/responses/questions themselves, so
+// club-facing routes are restricted to actual zonal heads.
+const requireZonalHead = (req, res, next) => {
+  if (!req.admin || req.admin.role === "superadmin") {
+    return res.status(403).json({ message: "This action is only available to zonal heads" });
+  }
+  next();
+};
+
+module.exports = { protect, requireSuperAdmin, requireZonalHead };

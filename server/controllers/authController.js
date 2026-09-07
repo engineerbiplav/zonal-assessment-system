@@ -26,6 +26,7 @@ const login = async (req, res) => {
         title: admin.title,
         email: admin.email,
         zoneName: admin.zoneName,
+        role: admin.role,
       },
     });
   } catch (err) {

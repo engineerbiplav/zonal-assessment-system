@@ -19,18 +19,13 @@ export default function ZoneLeadership() {
 
   useEffect(() => { load(); }, []);
 
-  const exportDocx = async (role, label) => {
+  const deleteResponse = async (role, label) => {
+    if (!window.confirm(`Delete ${label}'s response? They will need to submit again.`)) return;
     try {
-      const res = await api.get(`/zone-officials/${role}/export`, { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${label}-response.docx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      await api.delete(`/zone-officials/${role}/response`);
+      load();
     } catch (err) {
-      alert(err.response?.data?.message || "No response to export yet");
+      alert(err.response?.data?.message || "Failed to delete response");
     }
   };
 
@@ -95,8 +90,8 @@ export default function ZoneLeadership() {
                       <button className="btn small secondary" onClick={() => setViewRole({ role, label })}>
                         View Response
                       </button>
-                      <button className="btn small secondary" onClick={() => exportDocx(role, label)}>
-                        Export .docx
+                      <button className="btn small danger" onClick={() => deleteResponse(role, label)}>
+                        Delete Response
                       </button>
                     </>
                   )}

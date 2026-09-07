@@ -32,19 +32,10 @@ export default function ClubDetail() {
   const contactFor = (position) => contacts.find((c) => c.position === position);
   const responseFor = (contactId) => responses.find((r) => r.contactPerson === contactId);
 
-  const exportAll = async () => {
-    try {
-      const res = await api.get(`/clubs/${id}/export`, { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${club.name}-all-responses.docx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (err) {
-      alert(err.response?.data?.message || "No responses to export yet");
-    }
+  const deleteResponse = async (responseId) => {
+    if (!window.confirm("Delete this response? The president will need to submit again.")) return;
+    await api.delete(`/responses/${responseId}`);
+    load();
   };
 
   if (loading || !club) {
@@ -74,7 +65,6 @@ export default function ClubDetail() {
 
         <div className="toolbar">
           <h2>Officers &amp; Contact Persons</h2>
-          <button className="btn secondary" onClick={exportAll}>Export All Responses (.docx)</button>
         </div>
 
         <div className="grid grid-2">
@@ -151,26 +141,35 @@ export default function ClubDetail() {
           {responses.length === 0 ? (
             <p className="muted">No responses submitted yet.</p>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Respondent</th>
-                  <th>Position</th>
-                  <th>Submitted On</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {responses.map((r) => (
-                  <tr key={r._id}>
-                    <td>{r.respondentName}</td>
-                    <td>{r.position}</td>
-                    <td>{new Date(r.submittedAt).toLocaleString()}</td>
-                    <td><Link to={`/responses/${r._id}`}>View →</Link></td>
+            <div className="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Respondent</th>
+                    <th>Position</th>
+                    <th>Submitted On</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {responses.map((r) => (
+                    <tr key={r._id}>
+                      <td>{r.respondentName}</td>
+                      <td>{r.position}</td>
+                      <td>{new Date(r.submittedAt).toLocaleString()}</td>
+                      <td>
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                          <Link to={`/responses/${r._id}`}>View →</Link>
+                          <button className="btn small danger" onClick={() => deleteResponse(r._id)}>
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

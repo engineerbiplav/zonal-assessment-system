@@ -14,11 +14,13 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/admins", require("./routes/adminRoutes"));
 app.use("/api/clubs", require("./routes/clubRoutes"));
 app.use("/api/contacts", require("./routes/contactRoutes"));
 app.use("/api/responses", require("./routes/responseRoutes"));
 app.use("/api/analytics", require("./routes/analyticsRoutes"));
 app.use("/api/zone-officials", require("./routes/zoneOfficialRoutes"));
+app.use("/api/questions", require("./routes/questionRoutes"));
 app.use("/api/public", require("./routes/publicRoutes"));
 
 // Fallback error handler (e.g. multer file-type/size errors)
