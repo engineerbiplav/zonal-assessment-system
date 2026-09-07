@@ -38,6 +38,21 @@ export default function ClubDetail() {
     load();
   };
 
+  const deleteClub = async () => {
+    if (
+      !window.confirm(
+        `Delete "${club.name}"? This permanently removes its officers, contacts, and all submitted responses.`
+      )
+    )
+      return;
+    try {
+      await api.delete(`/clubs/${id}`);
+      navigate("/dashboard");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete club");
+    }
+  };
+
   if (loading || !club) {
     return (
       <div>
@@ -55,12 +70,18 @@ export default function ClubDetail() {
           ← Back to Clubs
         </button>
 
-        <div className="card club-card" style={{ marginBottom: 24 }}>
-          {club.logoUrl ? <img src={club.logoUrl} alt={club.name} /> : <div className="avatar" />}
-          <div>
-            <h1 style={{ marginBottom: 2 }}>{club.name}</h1>
-            <span className="muted">Club #{club.clubNumber}</span>
+        <div
+          className="card club-card"
+          style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            {club.logoUrl ? <img src={club.logoUrl} alt={club.name} /> : <div className="avatar" />}
+            <div>
+              <h1 style={{ marginBottom: 2 }}>{club.name}</h1>
+              <span className="muted">Club #{club.clubNumber}</span>
+            </div>
           </div>
+          <button className="btn danger small" onClick={deleteClub}>Delete Club</button>
         </div>
 
         <div className="toolbar">

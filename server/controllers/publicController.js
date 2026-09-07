@@ -18,27 +18,54 @@ const ZONE_ROLE_TYPE = {
 // Secretary / Treasurer / Membership Chairperson remain roster-only contacts.
 const CLUB_ASSESSMENT_POSITION = "President";
 
-// GET /api/public/clubs
-// Public, minimal club list (no admin/internal fields) for the universal
-// assessment link's club dropdown.
-const getPublicClubs = async (_req, res) => {
-  const clubs = await Club.find({}).select("name clubNumber logoUrl").sort({ name: 1 });
+// Every route below is scoped to one zonal head via their unique
+// `publicSlug` (e.g. /assessment/:zoneSlug), so a zonal head's link only
+// ever surfaces their own clubs and zone officials — never another zone's.
+const findAdminBySlug = async (zoneSlug) => Admin.findOne({ publicSlug: zoneSlug, role: "zonalhead" });
+
+// GET /api/public/:zoneSlug
+// Basic, non-sensitive info to render the gateway page header and to
+// confirm the link itself is valid before showing any form fields.
+const getZoneInfo = async (req, res) => {
+  const admin = await findAdminBySlug(req.params.zoneSlug);
+  if (!admin) return res.status(404).json({ message: "This assessment link is invalid or has been removed." });
+  res.json({ zoneName: admin.zoneName || admin.name, adminName: admin.name });
+};
+
+// GET /api/public/:zoneSlug/clubs
+// Minimal club list (no internal fields), limited to this zonal head's own
+// clubs, for the assessment link's club dropdown.
+const getPublicClubs = async (req, res) => {
+  const admin = await findAdminBySlug(req.params.zoneSlug);
+  if (!admin) return res.status(404).json({ message: "This assessment link is invalid or has been removed." });
+
+  const clubs = await Club.find({ admin: admin._id }).select("name clubNumber logoUrl").sort({ name: 1 });
   res.json({
     clubs: clubs.map((c) => ({ id: c._id, name: c.name, clubNumber: c.clubNumber, logoUrl: c.logoUrl })),
   });
 };
 
-// GET /api/public/lookup?club=<clubId>
+// GET /api/public/:zoneSlug/lookup?club=<clubId>
 // Club uniquely identifies the president contact (only the president role
 // has an online assessment), so once a club is picked we can look up and
 // show their name automatically — no position or name dropdown needed.
 const lookupContact = async (req, res) => {
+  const admin = await findAdminBySlug(req.params.zoneSlug);
+  if (!admin) return res.status(404).json({ message: "This assessment link is invalid or has been removed." });
+
   const { club } = req.query;
   if (!club) {
     return res.status(400).json({ message: "A club is required" });
   }
 
-  const contact = await ContactPerson.findOne({ club, position: CLUB_ASSESSMENT_POSITION });
+  // Confirm the club actually belongs to this zonal head before looking up
+  // its president, so one zone's link can never resolve another zone's club.
+  const clubDoc = await Club.findOne({ _id: club, admin: admin._id });
+  if (!clubDoc) {
+    return res.status(404).json({ message: "That club isn't part of this assessment link." });
+  }
+
+  const contact = await ContactPerson.findOne({ club: clubDoc._id, position: CLUB_ASSESSMENT_POSITION });
   if (!contact) {
     return res.status(404).json({ message: "No club president has been added for this club yet." });
   }
@@ -49,19 +76,27 @@ const lookupContact = async (req, res) => {
   res.json({ id: contact._id, name: contact.name, position: contact.position });
 };
 
-// POST /api/public/verify
+// POST /api/public/:zoneSlug/verify
 // body: { contactId, dobMonth, dobDay }
 // Confirms the selected club president's date of birth matches our
 // records, then hands back their token so the shared form flow
 // (GET/POST /api/public/form/:token) can take over.
 const verifyIdentity = async (req, res) => {
+  const admin = await findAdminBySlug(req.params.zoneSlug);
+  if (!admin) return res.status(404).json({ message: "This assessment link is invalid or has been removed." });
+
   const { contactId, dobMonth, dobDay } = req.body;
   if (!contactId || !dobMonth || !dobDay) {
     return res.status(400).json({ message: "Club and date of birth are required" });
   }
 
   const contact = await ContactPerson.findById(contactId);
-  if (!contact || !contact.requiresResponse || contact.position !== CLUB_ASSESSMENT_POSITION) {
+  if (
+    !contact
+    || String(contact.admin) !== String(admin._id)
+    || !contact.requiresResponse
+    || contact.position !== CLUB_ASSESSMENT_POSITION
+  ) {
     return res.status(404).json({ message: "We couldn't find that record. Please check your selections." });
   }
 
@@ -72,42 +107,47 @@ const verifyIdentity = async (req, res) => {
   res.json({ token: contact.publicToken });
 };
 
-// GET /api/public/zone-roles
+// GET /api/public/:zoneSlug/zone-roles
 // Static list of the two zone-level (non-club) assessment roles.
-const getZoneRoles = async (_req, res) => {
+const getZoneRoles = async (req, res) => {
+  const admin = await findAdminBySlug(req.params.zoneSlug);
+  if (!admin) return res.status(404).json({ message: "This assessment link is invalid or has been removed." });
   res.json({ roles: ZONE_ROLES.map((role) => ({ role, label: ZONE_ROLE_LABELS[role] })) });
 };
 
-// GET /api/public/zone-lookup?role=ImmediatePastZoneChairperson
-// Each admin (zone) has at most one person per role, but the system can
-// host more than one zone/admin, so this can return more than one match —
-// the frontend auto-selects when there's exactly one.
+// GET /api/public/:zoneSlug/zone-lookup?role=ImmediatePastZoneChairperson
+// Each admin (zone) has at most one person per role, and this is scoped to
+// one zonal head, so there's at most one match.
 const lookupZoneOfficial = async (req, res) => {
+  const admin = await findAdminBySlug(req.params.zoneSlug);
+  if (!admin) return res.status(404).json({ message: "This assessment link is invalid or has been removed." });
+
   const { role } = req.query;
   if (!role || !ZONE_ROLES.includes(role)) {
     return res.status(400).json({ message: "A valid role is required" });
   }
 
-  const officials = await ZoneOfficial.find({ role }).populate("admin", "zoneName name").sort({ name: 1 });
+  const official = await ZoneOfficial.findOne({ role, admin: admin._id });
   res.json({
-    officials: officials.map((o) => ({
-      id: o._id,
-      name: o.name,
-      zoneName: o.admin?.zoneName || o.admin?.name || "",
-    })),
+    officials: official
+      ? [{ id: official._id, name: official.name, zoneName: admin.zoneName || admin.name }]
+      : [],
   });
 };
 
-// POST /api/public/zone-verify
+// POST /api/public/:zoneSlug/zone-verify
 // body: { officialId, dobMonth, dobDay }
 const verifyZoneIdentity = async (req, res) => {
+  const admin = await findAdminBySlug(req.params.zoneSlug);
+  if (!admin) return res.status(404).json({ message: "This assessment link is invalid or has been removed." });
+
   const { officialId, dobMonth, dobDay } = req.body;
   if (!officialId || !dobMonth || !dobDay) {
     return res.status(400).json({ message: "Role, name, and date of birth are all required" });
   }
 
   const official = await ZoneOfficial.findById(officialId);
-  if (!official) {
+  if (!official || String(official.admin) !== String(admin._id)) {
     return res.status(404).json({ message: "We couldn't find that record. Please check your selections." });
   }
 
@@ -278,6 +318,7 @@ const submitForm = async (req, res) => {
 };
 
 module.exports = {
+  getZoneInfo,
   getForm,
   submitForm,
   getPublicClubs,

@@ -35,7 +35,20 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/respond/:token" element={<PublicForm />} />
-      <Route path="/assessment" element={<AssessmentAccess />} />
+      <Route path="/assessment/:zoneSlug" element={<AssessmentAccess />} />
+      <Route
+        path="/assessment"
+        element={
+          <div className="public-wrap">
+            <div className="container" style={{ maxWidth: 520, textAlign: "center" }}>
+              <p className="muted">
+                This link is missing your zone. Please use the specific assessment link your zonal head shared
+                with you.
+              </p>
+            </div>
+          </div>
+        }
+      />
 
       <Route
         path="/dashboard"

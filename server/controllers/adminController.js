@@ -10,6 +10,17 @@ const seedDefaultQuestions = require("../utils/seedDefaultQuestions");
 // GET /api/admins  (super admin only) — list all zonal heads
 const getAdmins = async (req, res) => {
   const admins = await Admin.find({ role: "zonalhead" }).sort({ createdAt: -1 });
+
+  // Self-heal any accounts created before publicSlug existed.
+  await Promise.all(
+    admins
+      .filter((a) => !a.publicSlug)
+      .map(async (a) => {
+        a.publicSlug = await Admin.generateUniqueSlug(a.zoneName || a.name);
+        await a.save();
+      })
+  );
+
   const clubCounts = await Club.aggregate([{ $group: { _id: "$admin", count: { $sum: 1 } } }]);
   const countByAdmin = {};
   clubCounts.forEach((c) => { countByAdmin[String(c._id)] = c.count; });
@@ -23,11 +34,12 @@ const getAdmins = async (req, res) => {
       zoneName: a.zoneName,
       createdAt: a.createdAt,
       clubCount: countByAdmin[String(a._id)] || 0,
+      publicSlug: a.publicSlug,
     }))
   );
 };
 
-// POST /api/admins  (super admin only) — create a new zonal head, e.g. Dibakar Paudel
+// POST /api/admins  (super admin only) — create a new zonal head
 const createAdmin = async (req, res) => {
   try {
     const { name, email, password, title, zoneName } = req.body;
@@ -60,6 +72,7 @@ const createAdmin = async (req, res) => {
       zoneName: admin.zoneName,
       createdAt: admin.createdAt,
       clubCount: 0,
+      publicSlug: admin.publicSlug,
     });
   } catch (err) {
     if (err.code === 11000) {
@@ -88,6 +101,7 @@ const updateAdmin = async (req, res) => {
   await admin.save();
   res.json({
     id: admin._id, name: admin.name, title: admin.title, email: admin.email, zoneName: admin.zoneName,
+    publicSlug: admin.publicSlug,
   });
 };
 

@@ -37,7 +37,7 @@ export default function SuperAdmin() {
         <div className="toolbar">
           <div>
             <h1>Zonal Heads</h1>
-            <p className="muted">Create and manage the zonal head accounts (like Dibakar Paudel) that run each zone.</p>
+            <p className="muted">Create and manage the zonal head accounts that run each zone.</p>
           </div>
           <button className="btn gold" onClick={() => setShowModal(true)}>
             + Add Zonal Head
@@ -57,24 +57,41 @@ export default function SuperAdmin() {
                   <th>Email</th>
                   <th>Zone</th>
                   <th>Clubs</th>
+                  <th>Assessment Link</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {admins.map((a) => (
-                  <tr key={a.id}>
-                    <td>{a.name}</td>
-                    <td>{a.email}</td>
-                    <td>{a.zoneName || "—"}</td>
-                    <td>{a.clubCount}</td>
-                    <td>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button className="btn small secondary" onClick={() => setEditAdmin(a)}>Edit</button>
-                        <button className="btn small danger" onClick={() => removeAdmin(a)}>Delete</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {admins.map((a) => {
+                  const link = a.publicSlug ? `${window.location.origin}/assessment/${a.publicSlug}` : "";
+                  return (
+                    <tr key={a.id}>
+                      <td>{a.name}</td>
+                      <td>{a.email}</td>
+                      <td>{a.zoneName || "—"}</td>
+                      <td>{a.clubCount}</td>
+                      <td>
+                        {link ? (
+                          <button
+                            className="btn small secondary"
+                            onClick={() => navigator.clipboard.writeText(link)}
+                            title={link}
+                          >
+                            Copy Link
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button className="btn small secondary" onClick={() => setEditAdmin(a)}>Edit</button>
+                          <button className="btn small danger" onClick={() => removeAdmin(a)}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -143,7 +160,7 @@ function AdminModal({ admin, onClose, onSaved }) {
         <form onSubmit={submit}>
           <div className="form-group">
             <label>Full Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="e.g. Dibakar Paudel" />
+            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="e.g. Full name" />
           </div>
           <div className="form-row">
             <div className="form-group">

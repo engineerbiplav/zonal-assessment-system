@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import Topbar from "../components/Topbar.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Dashboard() {
   const [clubs, setClubs] = useState([]);
@@ -9,6 +10,8 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
+  const { admin } = useAuth();
+  const assessmentLink = admin?.publicSlug ? `${window.location.origin}/assessment/${admin.publicSlug}` : "";
 
   const load = async () => {
     setLoading(true);
@@ -60,17 +63,18 @@ export default function Dashboard() {
 
         <div className="card" style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <strong>Universal Assessment Link</strong>
+            <strong>Your Assessment Link</strong>
             <p className="muted" style={{ margin: "4px 0 0" }}>
-              One link for club presidents, the immediate past zone chairperson, and the 1st Vice District
-              Governor/DGE — they'll pick their role and confirm their date of birth to reach their questions.
+              Specific to your zone — only your clubs, your club presidents, and your zone leadership roles will
+              show up on it. They'll pick their role and confirm their date of birth to reach their questions.
             </p>
           </div>
           <div className="link-box">
-            <span>{window.location.origin}/assessment</span>
+            <span>{assessmentLink || "Not available yet"}</span>
             <button
               className="btn small secondary"
-              onClick={() => navigator.clipboard.writeText(`${window.location.origin}/assessment`)}
+              disabled={!assessmentLink}
+              onClick={() => navigator.clipboard.writeText(assessmentLink)}
             >
               Copy
             </button>

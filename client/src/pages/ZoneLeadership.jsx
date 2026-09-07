@@ -38,7 +38,7 @@ export default function ZoneLeadership() {
             <h1>Zone Leadership</h1>
             <p className="muted">
               These two roles aren't tied to a club — set up who currently holds each, and they can answer
-              (or update) their assessment any time via the universal assessment link.
+              (or update) their assessment any time via your zone's assessment link (see the Dashboard).
             </p>
           </div>
         </div>
@@ -78,7 +78,7 @@ export default function ZoneLeadership() {
                 )}
 
                 <p className="muted" style={{ marginTop: 12, fontSize: "0.82rem" }}>
-                  They can answer or update their response any time via the universal assessment link.
+                  They can answer or update their response any time via your zone's assessment link.
                 </p>
 
                 <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>

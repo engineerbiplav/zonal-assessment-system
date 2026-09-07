@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/axios";
 
 const MONTHS = [
@@ -15,7 +15,11 @@ const TRACKS = [
 
 export default function AssessmentAccess() {
   const navigate = useNavigate();
+  const { zoneSlug } = useParams();
   const [track, setTrack] = useState("");
+  const [zoneInfo, setZoneInfo] = useState(null);
+  const [zoneInfoLoading, setZoneInfoLoading] = useState(true);
+  const [zoneInfoError, setZoneInfoError] = useState("");
 
   // --- Club president track state ---
   const [clubs, setClubs] = useState([]);
@@ -44,7 +48,18 @@ export default function AssessmentAccess() {
     setError("");
   };
 
+  // Confirm the link's zone slug is valid before showing any form fields.
   useEffect(() => {
+    setZoneInfoLoading(true);
+    api
+      .get(`/public/${zoneSlug}`)
+      .then(({ data }) => setZoneInfo(data))
+      .catch((err) => setZoneInfoError(err.response?.data?.message || "This assessment link is invalid."))
+      .finally(() => setZoneInfoLoading(false));
+  }, [zoneSlug]);
+
+  useEffect(() => {
+    if (!zoneInfo) return;
     resetDownstream();
     setClub("");
     setZoneOfficialId("");
@@ -53,7 +68,7 @@ export default function AssessmentAccess() {
     if (track === "club") {
       setClubsLoading(true);
       api
-        .get("/public/clubs")
+        .get(`/public/${zoneSlug}/clubs`)
         .then(({ data }) => setClubs(data.clubs || []))
         .catch(() => setError("Couldn't load the club list. Please refresh and try again."))
         .finally(() => setClubsLoading(false));
@@ -61,12 +76,12 @@ export default function AssessmentAccess() {
       const role = TRACKS.find((t) => t.id === track).role;
       setZoneOfficialsLoading(true);
       api
-        .get("/public/zone-lookup", { params: { role } })
+        .get(`/public/${zoneSlug}/zone-lookup`, { params: { role } })
         .then(({ data }) => setZoneOfficials(data.officials || []))
         .catch(() => setError("Couldn't load that role's details. Please refresh and try again."))
         .finally(() => setZoneOfficialsLoading(false));
     }
-  }, [track]);
+  }, [track, zoneInfo, zoneSlug]);
 
   // Club track: once a club is picked, auto-fetch the president's name.
   useEffect(() => {
@@ -75,11 +90,11 @@ export default function AssessmentAccess() {
     if (!club) return;
     setLookupLoading(true);
     api
-      .get("/public/lookup", { params: { club } })
+      .get(`/public/${zoneSlug}/lookup`, { params: { club } })
       .then(({ data }) => setSubject({ id: data.id, name: data.name }))
       .catch((err) => setLookupError(err.response?.data?.message || "Couldn't find the club president."))
       .finally(() => setLookupLoading(false));
-  }, [club, track]);
+  }, [club, track, zoneSlug]);
 
   // Zone tracks: if there's exactly one match, auto-select it; otherwise
   // wait for the person to pick from the dropdown.
@@ -107,7 +122,7 @@ export default function AssessmentAccess() {
     setError("");
     setVerifying(true);
     try {
-      const endpoint = isClubTrack ? "/public/verify" : "/public/zone-verify";
+      const endpoint = isClubTrack ? `/public/${zoneSlug}/verify` : `/public/${zoneSlug}/zone-verify`;
       const payload = isClubTrack
         ? { contactId: subject.id, dobMonth, dobDay }
         : { officialId: subject.id, dobMonth, dobDay };
@@ -122,11 +137,31 @@ export default function AssessmentAccess() {
 
   const step = !track ? 1 : !subject ? 2 : 3;
 
+  if (zoneInfoLoading) {
+    return (
+      <div className="public-wrap">
+        <div className="container" style={{ maxWidth: 520, textAlign: "center" }}>
+          <p className="muted">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (zoneInfoError) {
+    return (
+      <div className="public-wrap">
+        <div className="container" style={{ maxWidth: 520, textAlign: "center" }}>
+          <div className="alert error">{zoneInfoError}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="public-wrap">
       <div className="container" style={{ maxWidth: 520 }}>
         <div className="public-header">
-          <span className="eyebrow">Zone Assessment</span>
+          <span className="eyebrow">{zoneInfo?.zoneName || "Zone Assessment"}</span>
           <h1>Guiding Question Response</h1>
           <p className="muted">Find your assessment by confirming a few quick details below.</p>
         </div>

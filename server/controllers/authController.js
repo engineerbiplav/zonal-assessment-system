@@ -17,6 +17,15 @@ const login = async (req, res) => {
     if (!admin || !(await admin.comparePassword(password))) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    // Self-heal accounts created before the publicSlug field existed (e.g.
+    // zonal heads from an older version of this app) so their assessment
+    // link works without a manual migration.
+    if (admin.role === "zonalhead" && !admin.publicSlug) {
+      admin.publicSlug = await Admin.generateUniqueSlug(admin.zoneName || admin.name);
+      await admin.save();
+    }
+
     const token = signToken(admin._id);
     res.json({
       token,
@@ -27,6 +36,7 @@ const login = async (req, res) => {
         email: admin.email,
         zoneName: admin.zoneName,
         role: admin.role,
+        publicSlug: admin.publicSlug,
       },
     });
   } catch (err) {
