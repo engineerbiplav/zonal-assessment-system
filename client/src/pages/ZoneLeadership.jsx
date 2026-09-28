@@ -108,7 +108,7 @@ export default function ZoneLeadership() {
           label={editRole.label}
           official={editRole.official}
           onClose={() => setEditRole(null)}
-          onSaved={() => { setEditRole(null); load(); }}
+          onSaved={(notice) => { setEditRole(null); if (notice) alert(notice); load(); }}
         />
       )}
 
@@ -145,8 +145,14 @@ function ZoneOfficialModal({ role, label, official, onClose, onSaved }) {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       if (photo) fd.append("photo", photo);
-      await api.put(`/zone-officials/${role}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-      onSaved();
+      const { data } = await api.put(`/zone-officials/${role}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      let notice = "";
+      if (photo && data.oldPhotoDeleted === true) {
+        notice = "Saved. New photo uploaded and the old photo was deleted from storage.";
+      } else if (photo && data.oldPhotoDeleted === false) {
+        notice = "Saved. New photo uploaded, but the old photo could NOT be confirmed as deleted from storage.";
+      }
+      onSaved(notice);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save");
     } finally {
@@ -191,6 +197,14 @@ function ZoneOfficialModal({ role, label, official, onClose, onSaved }) {
           </div>
           <div className="form-group">
             <label>Photo (optional, stored in cloud)</label>
+            {official?.photoUrl && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <img className="avatar round" src={official.photoUrl} alt="Current" />
+                <span className="muted" style={{ fontSize: "0.82rem" }}>
+                  Current photo. Choosing a new one replaces it and deletes the old file.
+                </span>
+              </div>
+            )}
             <input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files[0])} />
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>

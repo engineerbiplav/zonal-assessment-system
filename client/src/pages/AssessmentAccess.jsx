@@ -32,7 +32,7 @@ export default function AssessmentAccess() {
   const [zoneOfficialId, setZoneOfficialId] = useState("");
 
   // --- Shared: resolved subject + DOB + submission ---
-  const [subject, setSubject] = useState(null); // { id, name } — whoever we've identified
+  const [subject, setSubject] = useState(null); // { id, name, photoUrl } — whoever we've identified
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState("");
   const [dobMonth, setDobMonth] = useState("");
@@ -91,7 +91,7 @@ export default function AssessmentAccess() {
     setLookupLoading(true);
     api
       .get(`/public/${zoneSlug}/lookup`, { params: { club } })
-      .then(({ data }) => setSubject({ id: data.id, name: data.name }))
+      .then(({ data }) => setSubject({ id: data.id, name: data.name, photoUrl: data.photoUrl }))
       .catch((err) => setLookupError(err.response?.data?.message || "Couldn't find the club president."))
       .finally(() => setLookupLoading(false));
   }, [club, track, zoneSlug]);
@@ -110,7 +110,7 @@ export default function AssessmentAccess() {
     resetDownstream();
     if (!zoneOfficialId) return;
     const match = zoneOfficials.find((o) => o.id === zoneOfficialId);
-    if (match) setSubject({ id: match.id, name: match.name });
+    if (match) setSubject({ id: match.id, name: match.name, photoUrl: match.photoUrl });
   }, [zoneOfficialId, track]);
 
   const daysInMonth = dobMonth ? new Date(2024, Number(dobMonth), 0).getDate() : 31;
@@ -227,7 +227,11 @@ export default function AssessmentAccess() {
                   </select>
                 ) : zoneOfficials.length === 1 ? (
                   <div className="respondent-chip" style={{ margin: 0 }}>
-                    <span className="pos-dot" />
+                    {zoneOfficials[0].photoUrl ? (
+                      <img className="respondent-photo" src={zoneOfficials[0].photoUrl} alt={zoneOfficials[0].name} />
+                    ) : (
+                      <span className="pos-dot" />
+                    )}
                     <strong>{zoneOfficials[0].name}</strong>
                   </div>
                 ) : (
@@ -244,7 +248,11 @@ export default function AssessmentAccess() {
                   <p className="muted" style={{ fontSize: "0.88rem" }}>Looking up your name...</p>
                 ) : subject ? (
                   <div className="respondent-chip" style={{ margin: 0 }}>
-                    <span className="pos-dot" />
+                    {subject.photoUrl ? (
+                      <img className="respondent-photo" src={subject.photoUrl} alt={subject.name} />
+                    ) : (
+                      <span className="pos-dot" />
+                    )}
                     <strong>{subject.name}</strong>
                     <span className="muted">· Club President</span>
                   </div>

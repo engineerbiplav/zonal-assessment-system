@@ -1,6 +1,7 @@
 const ZoneOfficial = require("../models/ZoneOfficial");
 const ZoneResponse = require("../models/ZoneResponse");
 const { ZONE_ROLES, ZONE_ROLE_LABELS } = require("../models/ZoneOfficial");
+const { deleteImage } = require("../config/cloudinary");
 
 // GET /api/zone-officials
 // Always returns one entry per role for this admin, even if not yet set up
@@ -38,6 +39,16 @@ const upsertZoneOfficial = async (req, res) => {
   }
 
   try {
+    const existing = await ZoneOfficial.findOne({ admin: req.admin._id, role });
+
+    // If a new photo was uploaded, confirm the old one is removed from
+    // Cloudinary (previously it was never deleted and just piled up).
+    let oldPhotoDeleted = null; // null = no old photo existed to delete
+    if (req.file && existing?.photoPublicId) {
+      const result = await deleteImage(existing.photoPublicId, `zone official photo for "${existing.name}"`);
+      oldPhotoDeleted = result.deleted;
+    }
+
     const official = await ZoneOfficial.findOneAndUpdate(
       { admin: req.admin._id, role },
       {
@@ -52,7 +63,7 @@ const upsertZoneOfficial = async (req, res) => {
       },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
-    res.json(official);
+    res.json({ ...official.toObject(), oldPhotoDeleted });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -65,6 +76,7 @@ const deleteZoneOfficial = async (req, res) => {
   if (!official) return res.status(404).json({ message: "Not found" });
 
   await ZoneResponse.deleteMany({ zoneOfficial: official._id });
+  if (official.photoPublicId) await deleteImage(official.photoPublicId, `zone official photo for "${official.name}"`);
   await official.deleteOne();
   res.json({ message: "Removed" });
 };

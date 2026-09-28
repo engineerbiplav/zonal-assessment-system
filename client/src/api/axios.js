@@ -12,12 +12,23 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response && err.response.status === 401) {
-      localStorage.removeItem("zas_token");
-      localStorage.removeItem("zas_admin");
+      // A 401 from the login form itself just means "wrong email/password" —
+      // it isn't an expired session, so don't clear storage or force a
+      // reload here. Doing so was wiping the on-screen error message a
+      // moment after it appeared (looked like the page "auto refreshed").
+      // Let the calling component (Login.jsx) show its own message instead.
+      const isLoginRequest = err.config?.url?.includes("/auth/login");
       const isPublicPage =
-        window.location.pathname.startsWith("/respond") || window.location.pathname.startsWith("/assessment");
-      if (!isPublicPage) {
-        window.location.href = "/login";
+        window.location.pathname.startsWith("/respond") ||
+        window.location.pathname.startsWith("/assessment") ||
+        window.location.pathname.startsWith("/login");
+
+      if (!isLoginRequest) {
+        localStorage.removeItem("zas_token");
+        localStorage.removeItem("zas_admin");
+        if (!isPublicPage) {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(err);

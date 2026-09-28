@@ -109,7 +109,11 @@ export default function PublicForm() {
             </p>
           )}
           <div className="respondent-chip">
-            <span className="pos-dot" />
+            {contact.photoUrl ? (
+              <img className="respondent-photo" src={contact.photoUrl} alt={contact.name} />
+            ) : (
+              <span className="pos-dot" />
+            )}
             <strong>{contact.name}</strong>
             <span className="muted">· {contact.position}</span>
           </div>

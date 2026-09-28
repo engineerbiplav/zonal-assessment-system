@@ -133,14 +133,16 @@ th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size
 }
 .public-header { text-align: center; margin-bottom: 28px; }
 .public-header img {
+  display: block;
   width: 76px;
   height: 76px;
   border-radius: 16px;
-  object-fit: cover;
-  margin-bottom: 12px;
+  object-fit: contain;
+  margin: 0 auto 12px;
   box-shadow: 0 6px 18px rgba(0,51,141,0.18);
   background: white;
   padding: 4px;
+  border: 1px solid var(--border);
 }
 .public-header h1 { font-size: 1.5rem; letter-spacing: -0.01em; }
 .public-header .eyebrow {
@@ -168,6 +170,14 @@ th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size
   box-shadow: 0 1px 3px rgba(20,30,60,0.05);
 }
 .public-header .respondent-chip .pos-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lions-gold); }
+.respondent-chip .respondent-photo {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-left: -4px;
+  border: 1px solid var(--border);
+}
 
 .assessment-progress {
   position: sticky;

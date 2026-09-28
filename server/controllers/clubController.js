@@ -1,7 +1,7 @@
 const Club = require("../models/Club");
 const ContactPerson = require("../models/ContactPerson");
 const Response = require("../models/Response");
-const { cloudinary } = require("../config/cloudinary");
+const { deleteImage } = require("../config/cloudinary");
 
 // GET /api/clubs
 const getClubs = async (req, res) => {
@@ -48,16 +48,18 @@ const updateClub = async (req, res) => {
   if (req.body.name) club.name = req.body.name;
   if (req.body.clubNumber) club.clubNumber = req.body.clubNumber;
 
+  let oldLogoDeleted = null;
   if (req.file) {
     if (club.logoPublicId) {
-      cloudinary.uploader.destroy(club.logoPublicId).catch(() => {});
+      const result = await deleteImage(club.logoPublicId, `club logo for "${club.name}"`);
+      oldLogoDeleted = result.deleted;
     }
     club.logoUrl = req.file.path;
     club.logoPublicId = req.file.filename;
   }
 
   await club.save();
-  res.json(club);
+  res.json({ ...club.toObject(), oldLogoDeleted });
 };
 
 // DELETE /api/clubs/:id
@@ -70,7 +72,7 @@ const deleteClub = async (req, res) => {
 
   await Response.deleteMany({ contactPerson: { $in: contactIds } });
   await ContactPerson.deleteMany({ club: club._id });
-  if (club.logoPublicId) cloudinary.uploader.destroy(club.logoPublicId).catch(() => {});
+  if (club.logoPublicId) await deleteImage(club.logoPublicId, `club logo for "${club.name}"`);
   await club.deleteOne();
 
   res.json({ message: "Club and related data deleted" });

@@ -22,4 +22,29 @@ const makeUploader = (folder) => {
   return multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 };
 
-module.exports = { cloudinary, makeUploader };
+// Deletes a previously-uploaded image from Cloudinary and *waits* for the
+// result instead of firing-and-forgetting, so callers can know for sure
+// whether the old image was actually removed (rather than assuming it was
+// just because the destroy() call didn't throw).
+// Returns { deleted: boolean, result?: string, error?: string }.
+const deleteImage = async (publicId, context = "image") => {
+  if (!publicId) return { deleted: false, result: "no-public-id" };
+  try {
+    const response = await cloudinary.uploader.destroy(publicId);
+    // Cloudinary resolves with { result: "ok" } on success, or
+    // { result: "not found" } if it was already gone — either way nothing
+    // is left behind, but we only call it a confirmed delete on "ok".
+    const deleted = response.result === "ok" || response.result === "not found";
+    if (deleted) {
+      console.log(`[cloudinary] Confirmed old ${context} removed (publicId=${publicId}, result=${response.result})`);
+    } else {
+      console.warn(`[cloudinary] Could not confirm deletion of old ${context} (publicId=${publicId}, result=${response.result})`);
+    }
+    return { deleted, result: response.result };
+  } catch (err) {
+    console.error(`[cloudinary] Error deleting old ${context} (publicId=${publicId}):`, err.message);
+    return { deleted: false, error: err.message };
+  }
+};
+
+module.exports = { cloudinary, makeUploader, deleteImage };

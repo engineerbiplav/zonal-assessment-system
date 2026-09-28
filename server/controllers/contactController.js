@@ -1,7 +1,7 @@
 const ContactPerson = require("../models/ContactPerson");
 const Club = require("../models/Club");
 const Response = require("../models/Response");
-const { cloudinary } = require("../config/cloudinary");
+const { deleteImage } = require("../config/cloudinary");
 const { nanoid } = require("nanoid");
 
 const ensureClubOwnership = async (clubId, adminId) => {
@@ -79,14 +79,21 @@ const updateContact = async (req, res) => {
     contact.requiresResponse = req.body.requiresResponse === "true" || req.body.requiresResponse === true;
   }
 
+  // Confirm (rather than assume) that the old photo was removed from
+  // Cloudinary before pointing the record at the new one, so replaced
+  // photos don't silently pile up in storage.
+  let oldPhotoDeleted = null; // null = no old photo existed to delete
   if (req.file) {
-    if (contact.photoPublicId) cloudinary.uploader.destroy(contact.photoPublicId).catch(() => {});
+    if (contact.photoPublicId) {
+      const result = await deleteImage(contact.photoPublicId, `contact photo for "${contact.name}"`);
+      oldPhotoDeleted = result.deleted;
+    }
     contact.photoUrl = req.file.path;
     contact.photoPublicId = req.file.filename;
   }
 
   await contact.save();
-  res.json(contact);
+  res.json({ ...contact.toObject(), oldPhotoDeleted });
 };
 
 // DELETE /api/contacts/:id
@@ -95,7 +102,7 @@ const deleteContact = async (req, res) => {
   if (!contact) return res.status(404).json({ message: "Contact not found" });
 
   await Response.deleteMany({ contactPerson: contact._id });
-  if (contact.photoPublicId) cloudinary.uploader.destroy(contact.photoPublicId).catch(() => {});
+  if (contact.photoPublicId) await deleteImage(contact.photoPublicId, `contact photo for "${contact.name}"`);
   await contact.deleteOne();
 
   res.json({ message: "Contact deleted" });

@@ -200,8 +200,9 @@ export default function ClubDetail() {
           clubId={id}
           contact={editContact}
           onClose={() => setEditContact(null)}
-          onSaved={() => {
+          onSaved={(notice) => {
             setEditContact(null);
+            if (notice) alert(notice);
             load();
           }}
         />
@@ -239,12 +240,18 @@ function ContactModal({ clubId, contact, onClose, onSaved }) {
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       if (photo) fd.append("photo", photo);
 
+      let notice = "";
       if (isNew) {
         await api.post(`/clubs/${clubId}/contacts`, fd, { headers: { "Content-Type": "multipart/form-data" } });
       } else {
-        await api.put(`/contacts/${contact._id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        const { data } = await api.put(`/contacts/${contact._id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        if (photo && data.oldPhotoDeleted === true) {
+          notice = "Saved. New photo uploaded and the old photo was deleted from storage.";
+        } else if (photo && data.oldPhotoDeleted === false) {
+          notice = "Saved. New photo uploaded, but the old photo could NOT be confirmed as deleted from storage.";
+        }
       }
-      onSaved();
+      onSaved(notice);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save contact");
     } finally {
@@ -303,6 +310,14 @@ function ContactModal({ clubId, contact, onClose, onSaved }) {
           </div>
           <div className="form-group">
             <label>Photo (stored in cloud)</label>
+            {contact.photoUrl && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <img className="avatar round" src={contact.photoUrl} alt="Current" />
+                <span className="muted" style={{ fontSize: "0.82rem" }}>
+                  Current photo. Choosing a new one replaces it and deletes the old file.
+                </span>
+              </div>
+            )}
             <input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files[0])} />
           </div>
           {form.position === "President" ? (

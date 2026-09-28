@@ -73,7 +73,7 @@ const lookupContact = async (req, res) => {
     return res.status(403).json({ message: "This club's president assessment is not currently active." });
   }
 
-  res.json({ id: contact._id, name: contact.name, position: contact.position });
+  res.json({ id: contact._id, name: contact.name, position: contact.position, photoUrl: contact.photoUrl || "" });
 };
 
 // POST /api/public/:zoneSlug/verify
@@ -130,7 +130,7 @@ const lookupZoneOfficial = async (req, res) => {
   const official = await ZoneOfficial.findOne({ role, admin: admin._id });
   res.json({
     officials: official
-      ? [{ id: official._id, name: official.name, zoneName: admin.zoneName || admin.name }]
+      ? [{ id: official._id, name: official.name, zoneName: admin.zoneName || admin.name, photoUrl: official.photoUrl || "" }]
       : [],
   });
 };
@@ -185,7 +185,7 @@ const getForm = async (req, res) => {
     return res.json({
       club: { name: club.name, logoUrl: club.logoUrl, clubNumber: club.clubNumber },
       admin: { name: admin?.name || "", title: admin?.title || "Zonal Head" },
-      contact: { name: contact.name, position: contact.position },
+      contact: { name: contact.name, position: contact.position, photoUrl: contact.photoUrl || "" },
       questionSections,
       hasResponded: contact.hasResponded,
       respondedAt: contact.respondedAt,
@@ -207,7 +207,7 @@ const getForm = async (req, res) => {
     return res.json({
       club: null,
       admin: { name: admin?.name || "", title: admin?.title || "Zonal Head" },
-      contact: { name: official.name, position: ZONE_ROLE_LABELS[official.role] },
+      contact: { name: official.name, position: ZONE_ROLE_LABELS[official.role], photoUrl: official.photoUrl || "" },
       questionSections,
       hasResponded: official.hasResponded,
       respondedAt: official.respondedAt,
